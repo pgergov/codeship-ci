@@ -11,14 +11,6 @@ BRANCH_TO_FOLDER_MAPPING = {
 
 def build(*args, **kwargs):
     print('Building:')
-    print('Args are: ', args)
-    print('Kwargs are: ', kwargs)
-    variables = ['CI', 'CI_BUILD_NUMBER', 'CI_BUILD_URL', 'CI_PULL_REQUEST',
-                 'CI_BRANCH', 'CI_COMMIT_ID', 'CI_COMMITTER_NAME',
-                 'CI_COMMITTER_EMAIL', 'CI_COMMITTER_USERNAME', 'CI_MESSAGE',
-                 'CI_NAME']
-#    for variable in variables:
-#        print(variable, os.environ[variable])
 
     public_key = os.environ['AWS_ACCESS_KEY_ID']
     private_key = os.environ['AWS_SECRET_ACCESS_KEY']
@@ -32,6 +24,8 @@ def build(*args, **kwargs):
     # handle production manually
     branch = os.environ.get('CI_BRANCH')
     s3_container_folder = BRANCH_TO_FOLDER_MAPPING.get(branch, branch)
+    # get ui version from?
+    # count files in folder. Generate the last (build) numb correctly.
     s3_build_folder = '1.2.0'
 
     build_path = 'ui/build'
@@ -43,6 +37,7 @@ def build(*args, **kwargs):
                           bucket,
                           "{}/{}".format(s3_container_folder, s3_build_folder))
     os.remove(build_zip)
+    # Make current simpling to last build
 
 
 if __name__ == '__main__':
