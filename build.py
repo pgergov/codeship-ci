@@ -10,7 +10,7 @@ def build(*args, **kwargs):
                  'CI_COMMITTER_EMAIL', 'CI_COMMITTER_USERNAME', 'CI_MESSAGE',
                  'CI_NAME']
     for variable in variables:
-        print(os.environ[variable])
+        print(variable, os.environ[variable])
 
 
 if __name__ == '__main__':
