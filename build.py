@@ -2,7 +2,10 @@ import os
 import boto3
 import shutil
 
+from datetime import datetime, timezone
 
+
+CURRENT_ZIP = 'current.zip'
 BRANCH_TO_FOLDER_MAPPING = {
     'master': 'staging',
     'develop': 'dev'
@@ -10,34 +13,44 @@ BRANCH_TO_FOLDER_MAPPING = {
 
 
 def build(*args, **kwargs):
-    print('Building:')
-
+    print('Copying to UI bucket.')
     public_key = os.environ['AWS_ACCESS_KEY_ID']
     private_key = os.environ['AWS_SECRET_ACCESS_KEY']
     bucket = os.environ['AWS_STORAGE_BUCKET_NAME']
+    branch = os.environ.get('CI_BRANCH')
 
     s3 = boto3.client('s3',
                       aws_access_key_id=public_key,
                       aws_secret_access_key=private_key)
-    print('Buckets response: ', s3.list_buckets())
 
-    # handle production manually
-    branch = os.environ.get('CI_BRANCH')
+    # TODO: handle production push?
     s3_container_folder = BRANCH_TO_FOLDER_MAPPING.get(branch, branch)
-    # get ui version from?
-    # count files in folder. Generate the last (build) numb correctly.
-    s3_build_folder = '1.2.0'
+    # TODO: get version correctly
+    ui_version = '1.2.0'
+    # Do we want this human readable - count files, increment result + 1?
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    zipped_ui = '{}.{}.{}'.format(ui_version, timestamp, 'zip')
+    zipped_ui_key = '{}/{}'.format(s3_container_folder, zipped_ui)
 
     build_path = 'ui/build'
-    build_zip = shutil.make_archive(s3_build_folder, 'zip', build_path)
+    builded_ui_zip = shutil.make_archive(zipped_ui, 'zip', build_path)
 
-    with open(build_zip, 'rb') as zip_data:
-        # make the file private
-        s3.upload_fileobj(zip_data,
-                          bucket,
-                          "{}/{}".format(s3_container_folder, s3_build_folder))
-    os.remove(build_zip)
-    # Make current simpling to last build
+    with open(builded_ui_zip, 'rb') as data:
+        s3.put_object(Body=data,
+                      Bucket=bucket,
+                      ACL='private',
+                      Key=zipped_ui_key)
+    os.remove(builded_ui_zip)
+
+    # simulate 'symlink' by copying desired build in `current.zip`
+    s3.copy_object(Bucket=bucket,
+                   ACL='public-read',
+                   CopySource={
+                       'Bucket': bucket,
+                       'Key': zipped_ui_key
+                   },
+                   Key='{}/{}'.format(s3_container_folder, CURRENT_ZIP))
+    # TODO: handle possible errors?
 
 
 if __name__ == '__main__':
